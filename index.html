@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FocusFlow | Comprehensive Work System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        body { font-family: 'Inter', sans-serif; }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .dark ::-webkit-scrollbar-thumb { background: #475569; }
+        .dark ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+
+        /* Animations */
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Checkbox Custom Style */
+        .custom-checkbox input:checked + div { background-color: #10b981; border-color: #10b981; }
+        .custom-checkbox input:checked + div svg { display: block; }
+        
+        /* Glassmorphism for Timer */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .dark .glass-panel {
+            background: rgba(30, 41, 59, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        /* Calendar Grid */
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 1px;
+            background-color: #e2e8f0;
+        }
+        .dark .calendar-grid { background-color: #334155; }
+        .calendar-day { min-height: 100px; }
+
+        /* Smooth Timer Transition */
+        .timer-ring {
+            transition: stroke-dashoffset 1s linear;
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#6366f1',
+                        secondary: '#ec4899',
+                        dark: '#0f172a',
+                        light: '#f8fafc'
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-slate-50 text-slate-900 dark:bg-slate-900 dark:text-slate-100 transition-colors duration-200 h-screen overflow-hidden flex">
+
+    <!-- Sidebar Navigation -->
+    <aside class="w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex flex-col hidden md:flex shadow-lg z-20">
+        <div class="p-6 flex items-center gap-3">
+            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold">
+                <i class="fa-solid fa-bolt"></i>
+            </div>
+            <h1 class="font-bold text-xl tracking-tight">FocusFlow</h1>
+        </div>
+
+        <nav class="flex-1 px-4 space-y-2 mt-4">
+            <button onclick="app.navigate('dashboard')" id="nav-dashboard" class="nav-item w-full flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 rounded-xl transition-all">
+                <i class="fa-solid fa-grid-2 text-lg w-6"></i>
+                <span class="font-medium">Dashboard</span>
+            </button>
+            <button onclick="app.navigate('tasks')" id="nav-tasks" class="nav-item w-full flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 rounded-xl transition-all">
+                <i class="fa-solid fa-check-circle text-lg w-6"></i>
+                <span class="font-medium">My Tasks</span>
+                <span id="task-count-badge" class="ml-auto bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-xs font-bold px-2 py-0.5 rounded-full">0</span>
+            </button>
+            <button onclick="app.navigate('calendar')" id="nav-calendar" class="nav-item w-full flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 rounded-xl transition-all">
+                <i class="fa-solid fa-calendar-alt text-lg w-6"></i>
+                <span class="font-medium">Calendar</span>
+            </button>
+            <button onclick="app.navigate('pomodoro')" id="nav-pomodoro" class="nav-item w-full flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 rounded-xl transition-all">
+                <i class="fa-solid fa-hourglass-start text-lg w-6"></i>
+                <span class="font-medium">Focus Timer</span>
+            </button>
+        </nav>
+
+        <div class="p-4 border-t border-slate-200 dark:border-slate-700">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                    <span class="text-xs font-medium text-slate-500 dark:text-slate-400">System Online</span>
+                </div>
+                <button onclick="app.toggleTheme()" class="text-slate-400 hover:text-indigo-500 transition-colors">
+                    <i class="fa-solid fa-moon dark:hidden"></i>
+                    <i class="fa-solid fa-sun hidden dark:inline"></i>
+                </button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col h-full overflow-hidden relative">
+        <!-- Mobile Header -->
+        <header class="md:hidden flex items-center justify-between p-4 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white">
+                    <i class="fa-solid fa-bolt"></i>
+                </div>
+                <h1 class="font-bold text-lg">FocusFlow</h1>
+            </div>
+            <button onclick="document.querySelector('aside').classList.toggle('hidden')" class="text-slate-600 dark:text-slate-300">
+                <i class="fa-solid fa-bars text-xl"></i>
+            </button>
+        </header>
+
+        <!-- Dynamic View Container -->
+        <div id="app-container" class="flex-1 overflow-y-auto p-4 md:p-8 relative">
+            <!-- Content Injected via JS -->
+        </div>
+
+        <!-- Floating Pomodoro Widget (Mini) -->
+        <div id="mini-timer" class="absolute bottom-6 right-6 glass-panel p-4 rounded-2xl shadow-2xl flex flex-col gap-2 transition-transform hover:scale-105 z-50 border-l-4 border-indigo-500 w-48">
+            <div class="flex items-center gap-3">
+                <!-- Play/Pause Button (Circle) -->
+                <button class="relative w-12 h-12 flex items-center justify-center cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors focus:outline-none" onclick="app.toggleTimer()">
+                    <svg class="transform -rotate-90 w-12 h-12 absolute">
+                        <circle cx="24" cy="24" r="18" stroke="currentColor" stroke-width="3" fill="transparent" class="text-slate-200 dark:text-slate-700" />
+                        <circle id="mini-progress" cx="24" cy="24" r="18" stroke="currentColor" stroke-width="3" fill="transparent" stroke-dasharray="113" stroke-dashoffset="0" class="text-indigo-500 transition-all duration-1000 timer-ring" />
+                    </svg>
+                    <i class="fa-solid fa-play text-xs text-slate-500 z-10" id="mini-icon"></i>
+                </button>
+                
+                <!-- Text Info (Click to Navigate) -->
+                <div class="cursor-pointer flex-1" onclick="app.navigate('pomodoro')">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate" id="mini-mode-text">Focus</p>
+                    <p class="text-xl font-mono font-bold text-slate-800 dark:text-white leading-none" id="mini-time">25:00</p>
+                </div>
+            </div>
+
+            <!-- Mode Controls -->
+            <div class="flex justify-between items-center pt-2 border-t border-slate-200 dark:border-slate-700 mt-1">
+                <button onclick="app.setTimerMode('focus')" class="text-slate-400 hover:text-indigo-500 transition-colors p-1" title="Focus">
+                    <i class="fa-solid fa-brain text-xs"></i>
+                </button>
+                <button onclick="app.setTimerMode('shortBreak')" class="text-slate-400 hover:text-teal-500 transition-colors p-1" title="Short Break">
+                    <i class="fa-solid fa-mug-hot text-xs"></i>
+                </button>
+                <button onclick="app.setTimerMode('longBreak')" class="text-slate-400 hover:text-blue-500 transition-colors p-1" title="Long Break">
+                    <i class="fa-solid fa-couch text-xs"></i>
+                </button>
+                <div class="w-px h-3 bg-slate-300 dark:bg-slate-600 mx-1"></div>
+                <button onclick="app.resetTimer()" class="text-slate-400 hover:text-red-500 transition-colors p-1" title="Reset">
+                    <i class="fa-solid fa-rotate-left text-xs"></i>
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal for Adding/Editing Tasks -->
+    <div id="task-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden z-50 flex items-center justify-center opacity-0 transition-opacity duration-200">
+        <div class="bg-white dark:bg-slate-800 w-full max-w-md rounded-2xl shadow-2xl p-6 transform scale-95 transition-transform duration-200" id="task-modal-content">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold dark:text-white" id="modal-title">New Task</h3>
+                <button onclick="app.closeModal('task-modal')" class="text-slate-400 hover:text-red-500 transition-colors">
+                    <i class="fa-solid fa-times text-lg"></i>
+                </button>
+            </div>
+            
+            <form id="task-form" onsubmit="app.handleTaskSubmit(event)">
+                <input type="hidden" id="task-id">
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-500 mb-1">What needs to be done?</label>
+                        <input type="text" id="task-title" required class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white" placeholder="e.g. Finish quarterly report">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-500 mb-1">Priority</label>
+                            <select id="task-priority" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white">
+                                <option value="low">Low Priority</option>
+                                <option value="medium" selected>Medium</option>
+                                <option value="high">High Priority</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-500 mb-1">Due Date</label>
+                            <input type="date" id="task-date" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white">
+                        </div>
+                    </div>
+
+                    <div>
+                         <label class="block text-sm font-medium text-slate-500 mb-1">Category (Tag)</label>
+                         <div class="flex gap-2" id="category-selector">
+                             <!-- Generated by JS -->
+                         </div>
+                         <input type="hidden" id="task-category" value="work">
+                    </div>
+                </div>
+
+                <div class="mt-8 flex justify-end gap-3">
+                    <button type="button" onclick="app.closeModal('task-modal')" class="px-5 py-2.5 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors font-medium">Cancel</button>
+                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-medium shadow-lg shadow-indigo-500/30 transition-all">Save Task</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal for Timer Settings -->
+    <div id="timer-settings-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden z-50 flex items-center justify-center opacity-0 transition-opacity duration-200">
+        <div class="bg-white dark:bg-slate-800 w-full max-w-sm rounded-2xl shadow-2xl p-6 transform scale-95 transition-transform duration-200" id="timer-settings-content">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold dark:text-white"><i class="fa-solid fa-cog mr-2"></i>Timer Settings</h3>
+                <button onclick="app.closeModal('timer-settings-modal')" class="text-slate-400 hover:text-red-500 transition-colors">
+                    <i class="fa-solid fa-times text-lg"></i>
+                </button>
+            </div>
+            
+            <form onsubmit="app.saveTimerSettings(event)">
+                <div class="space-y-5">
+                    <div>
+                        <label class="flex justify-between text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">
+                            <span>Focus Duration</span>
+                            <span class="text-slate-400 text-xs">(minutes)</span>
+                        </label>
+                        <input type="number" id="setting-focus" min="1" max="90" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white text-center font-mono font-bold text-lg">
+                    </div>
+
+                    <div>
+                        <label class="flex justify-between text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">
+                            <span>Short Break</span>
+                            <span class="text-slate-400 text-xs">(minutes)</span>
+                        </label>
+                        <input type="number" id="setting-short" min="1" max="30" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-teal-500 dark:text-white text-center font-mono font-bold text-lg">
+                    </div>
+
+                    <div>
+                        <label class="flex justify-between text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">
+                            <span>Long Break</span>
+                            <span class="text-slate-400 text-xs">(minutes)</span>
+                        </label>
+                        <input type="number" id="setting-long" min="1" max="60" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white text-center font-mono font-bold text-lg">
+                    </div>
+                </div>
+
+                <div class="mt-8 flex justify-end gap-3">
+                    <button type="button" onclick="app.closeModal('timer-settings-modal')" class="px-5 py-2.5 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors font-medium">Cancel</button>
+                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-medium shadow-lg shadow-indigo-500/30 transition-all">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        const app = {
+            state: {
+                view: 'dashboard',
+                tasks: [],
+                timer: {
+                    time: 25 * 60,
+                    totalTime: 25 * 60,
+                    isRunning: false,
+                    mode: 'focus', // focus, shortBreak, longBreak
+                    intervalId: null
+                },
+                timerSettings: {
+                    focus: 25,
+                    shortBreak: 5,
+                    longBreak: 15
+                },
+                filter: 'all',
+                darkMode: false
+            },
+
+            // --- Initialization ---
+            init() {
+                // Load data
+                const savedTasks = localStorage.getItem('focusflow_tasks');
+                if (savedTasks) this.state.tasks = JSON.parse(savedTasks);
+                
+                const savedTheme = localStorage.getItem('focusflow_theme');
+                if (savedTheme === 'dark') {
+                    document.documentElement.classList.add('dark');
+                    this.state.darkMode = true;
+                }
+
+                // Load Settings
+                const savedSettings = localStorage.getItem('focusflow_settings');
+                if (savedSettings) this.state.timerSettings = JSON.parse(savedSettings);
+
+                // Initial Render
+                this.navigate('dashboard');
+                this.updateBadge();
+                this.setupCategorySelector();
+                
+                // Initialize Timer Display
+                this.updateTimerDisplay();
+
+                // Setup global listener for enter key in modal
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape') {
+                        this.closeModal('task-modal');
+                        this.closeModal('timer-settings-modal');
+                    }
+                });
+            },
+
+            // --- Navigation & Routing ---
+            navigate(view) {
+                this.state.view = view;
+                
+                // Update Sidebar UI
+                document.querySelectorAll('.nav-item').forEach(el => {
+                    el.classList.remove('bg-indigo-50', 'text-indigo-600', 'dark:bg-indigo-900/20', 'dark:text-indigo-400');
+                    el.classList.add('text-slate-600', 'dark:text-slate-400');
+                });
+                
+                const activeNav = document.getElementById(`nav-${view}`);
+                if (activeNav) {
+                    activeNav.classList.add('bg-indigo-50', 'text-indigo-600', 'dark:bg-indigo-900/20', 'dark:text-indigo-400');
+                    activeNav.classList.remove('text-slate-600', 'dark:text-slate-400');
+                }
+
+                const container = document.getElementById('app-container');
+                container.innerHTML = ''; // Clear current view
+                
+                // Render specific view
+                if (view === 'dashboard') this.renderDashboard(container);
+                else if (view === 'tasks') this.renderTaskView(container);
+                else if (view === 'calendar') this.renderCalendarView(container);
+                else if (view === 'pomodoro') this.renderPomodoroView(container);
+            },
+
+            // --- Theme Toggle ---
+            toggleTheme() {
+                this.state.darkMode = !this.state.darkMode;
+                document.documentElement.classList.toggle('dark');
+                localStorage.setItem('focusflow_theme', this.state.darkMode ? 'dark' : 'light');
+            },
+
+            // --- Data Persistence ---
+            saveData() {
+                localStorage.setItem('focusflow_tasks', JSON.stringify(this.state.tasks));
+                this.updateBadge();
+            },
+
+            updateBadge() {
+                const count = this.state.tasks.filter(t => !t.completed).length;
+                document.getElementById('task-count-badge').textContent = count;
+            },
+
+            // --- Task Logic ---
+            addTask(task) {
+                this.state.tasks.unshift({
+                    id: Date.now().toString(),
+                    createdAt: new Date(),
+                    completed: false,
+                    ...task
+                });
+                this.saveData();
+                this.refreshCurrentView();
+            },
+
+            updateTask(id, updates) {
+                const index = this.state.tasks.findIndex(t => t.id === id);
+                if (index !== -1) {
+                    this.state.tasks[index] = { ...this.state.tasks[index], ...updates };
+                    this.saveData();
+                    this.refreshCurrentView();
+                }
+            },
+
+            deleteTask(id) {
+                this.state.tasks = this.state.tasks.filter(t => t.id !== id);
+                this.saveData();
+                this.refreshCurrentView();
+            },
+
+            toggleComplete(id) {
+                const task = this.state.tasks.find(t => t.id === id);
+                if (task) {
+                    task.completed = !task.completed;
+                    this.saveData();
+                    
+                    // Trigger confetti if completed
+                    if(task.completed) this.triggerConfetti();
+                    
+                    this.refreshCurrentView();
+                }
+            },
+
+            // --- View Renderers ---
+
+            renderDashboard(container) {
+                const incomplete = this.state.tasks.filter(t => !t.completed);
+                const completed = this.state.tasks.filter(t => t.completed);
+                const highPriority = incomplete.filter(t => t.priority === 'high').length;
+                
+                // Calculate completion rate
+                const total = this.state.tasks.length;
+                const rate = total === 0 ? 0 : Math.round((completed.length / total) * 100);
+
+                let html = `
+                <div class="fade-in max-w-5xl mx-auto">
+                    <h2 class="text-3xl font-bold mb-1 dark:text-white">Good day, Productive One.</h2>
+                    <p class="text-slate-500 mb-8">Here is your daily overview.</p>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                        <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
+                            <div class="flex justify-between items-start mb-4">
+                                <div class="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl text-blue-600 dark:text-blue-400">
+                                    <i class="fa-solid fa-list-check text-xl"></i>
+                                </div>
+                                <span class="text-xs font-bold bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded text-slate-500">Total</span>
+                            </div>
+                            <h3 class="text-3xl font-bold dark:text-white">${incomplete.length}</h3>
+                            <p class="text-slate-500 text-sm">Tasks Pending</p>
+                        </div>
+
+                        <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
+                            <div class="flex justify-between items-start mb-4">
+                                <div class="p-3 bg-red-50 dark:bg-red-900/20 rounded-xl text-red-600 dark:text-red-400">
+                                    <i class="fa-solid fa-fire text-xl"></i>
+                                </div>
+                                <span class="text-xs font-bold bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded text-slate-500">Urgent</span>
+                            </div>
+                            <h3 class="text-3xl font-bold dark:text-white">${highPriority}</h3>
+                            <p class="text-slate-500 text-sm">High Priority</p>
+                        </div>
+
+                        <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
+                            <div class="flex justify-between items-start mb-4">
+                                <div class="p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl text-emerald-600 dark:text-emerald-400">
+                                    <i class="fa-solid fa-chart-line text-xl"></i>
+                                </div>
+                                <span class="text-xs font-bold bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded text-slate-500">Daily</span>
+                            </div>
+                            <h3 class="text-3xl font-bold dark:text-white">${rate}%</h3>
+                            <p class="text-slate-500 text-sm">Completion Rate</p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <!-- Recent Tasks -->
+                        <div class="lg:col-span-2">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="font-bold text-lg dark:text-white">Priority Tasks</h3>
+                                <button onclick="app.navigate('tasks')" class="text-indigo-600 dark:text-indigo-400 text-sm font-medium hover:underline">View All</button>
+                            </div>
+                            <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden">
+                                ${incomplete.length === 0 
+                                    ? `<div class="p-8 text-center text-slate-400">No pending tasks! <br><button onclick="app.openModal('task-modal')" class="mt-2 text-indigo-500 font-medium">Add one now</button></div>` 
+                                    : `<ul class="divide-y divide-slate-100 dark:divide-slate-700">
+                                        ${incomplete.sort((a,b) => (b.priority === 'high') - (a.priority === 'high')).slice(0,5).map(task => this.generateTaskHTML(task, true)).join('')}
+                                       </ul>`
+                                }
+                            </div>
+                        </div>
+
+                        <!-- Mini Calendar/Stats -->
+                        <div class="lg:col-span-1">
+                             <h3 class="font-bold text-lg dark:text-white mb-4">Productivity</h3>
+                             <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 p-6 flex flex-col items-center justify-center">
+                                <canvas id="productivityChart" width="200" height="200"></canvas>
+                             </div>
+                        </div>
+                    </div>
+                </div>`;
+                
+                container.innerHTML = html;
+                
+                // Initialize Chart
+                setTimeout(() => {
+                    const ctx = document.getElementById('productivityChart').getContext('2d');
+                    new Chart(ctx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: ['Done', 'Pending'],
+                            datasets: [{
+                                data: [completed.length, incomplete.length],
+                                backgroundColor: ['#10b981', '#6366f1'],
+                                borderWidth: 0
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: { legend: { position: 'bottom' } },
+                            cutout: '70%'
+                        }
+                    });
+                }, 0);
+            },
+
+            renderTaskView(container) {
+                // Sorting logic
+                const sortedTasks = [...this.state.tasks].sort((a, b) => {
+                     // Sort by completed status (incomplete first)
+                     if (a.completed !== b.completed) return a.completed ? 1 : -1;
+                     // Then by priority
+                     const pMap = { high: 3, medium: 2, low: 1 };
+                     return pMap[b.priority] - pMap[a.priority];
+                });
+
+                const html = `
+                <div class="fade-in max-w-4xl mx-auto h-full flex flex-col">
+                    <div class="flex justify-between items-center mb-6">
+                        <div>
+                            <h2 class="text-2xl font-bold dark:text-white">My Tasks</h2>
+                            <p class="text-slate-500 text-sm">Manage your daily workload</p>
+                        </div>
+                        <button onclick="app.openModal('task-modal')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-medium shadow-lg shadow-indigo-500/30 flex items-center gap-2 transition-all">
+                            <i class="fa-solid fa-plus"></i> Add Task
+                        </button>
+                    </div>
+
+                    <div class="flex gap-2 mb-6 overflow-x-auto pb-2">
+                        <button class="px-4 py-1.5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm font-medium">All</button>
+                        <button class="px-4 py-1.5 rounded-full border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 text-sm transition-colors">Pending</button>
+                        <button class="px-4 py-1.5 rounded-full border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 text-sm transition-colors">Completed</button>
+                    </div>
+
+                    <div class="flex-1 overflow-y-auto bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
+                        ${sortedTasks.length === 0 
+                            ? `<div class="flex flex-col items-center justify-center h-full text-slate-400 p-10">
+                                <i class="fa-solid fa-clipboard-list text-6xl mb-4 opacity-20"></i>
+                                <p>No tasks found. Time to relax or plan ahead!</p>
+                               </div>` 
+                            : `<ul class="divide-y divide-slate-100 dark:divide-slate-700">
+                                ${sortedTasks.map(t => this.generateTaskHTML(t)).join('')}
+                               </ul>`
+                        }
+                    </div>
+                </div>`;
+                container.innerHTML = html;
+            },
+
+            renderCalendarView(container) {
+                const date = new Date();
+                const month = date.getMonth();
+                const year = date.getFullYear();
+                
+                const firstDay = new Date(year, month, 1);
+                const lastDay = new Date(year, month + 1, 0);
+                const daysInMonth = lastDay.getDate();
+                const startDay = firstDay.getDay(); // 0 is Sunday
+                
+                const monthNames = ["January", "February", "March", "April", "May", "June",
+                  "July", "August", "September", "October", "November", "December"
+                ];
+
+                let daysHTML = '';
+                
+                // Empty slots for previous month
+                for(let i=0; i<startDay; i++) {
+                    daysHTML += `<div class="bg-slate-50 dark:bg-slate-800/50 min-h-[100px] border-b border-r border-slate-200 dark:border-slate-700"></div>`;
+                }
+
+                // Days
+                for(let i=1; i<=daysInMonth; i++) {
+                    const currentDateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(i).padStart(2,'0')}`;
+                    const dayTasks = this.state.tasks.filter(t => t.dueDate === currentDateStr);
+                    const isToday = i === date.getDate();
+
+                    daysHTML += `
+                    <div class="bg-white dark:bg-slate-800 min-h-[120px] p-2 border-b border-r border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors relative group">
+                        <span class="text-sm font-semibold ${isToday ? 'bg-indigo-600 text-white w-6 h-6 rounded-full flex items-center justify-center' : 'text-slate-500'}">${i}</span>
+                        <div class="mt-2 space-y-1 overflow-y-auto max-h-[80px]">
+                            ${dayTasks.map(t => `
+                                <div class="text-xs px-1.5 py-0.5 rounded truncate border-l-2 cursor-pointer
+                                    ${t.completed ? 'bg-slate-100 text-slate-400 border-slate-300 line-through' : 
+                                      t.priority === 'high' ? 'bg-red-50 text-red-700 border-red-500 dark:bg-red-900/20 dark:text-red-300' :
+                                      t.priority === 'medium' ? 'bg-orange-50 text-orange-700 border-orange-500 dark:bg-orange-900/20 dark:text-orange-300' :
+                                      'bg-blue-50 text-blue-700 border-blue-500 dark:bg-blue-900/20 dark:text-blue-300'}"
+                                    title="${t.title}"
+                                >
+                                    ${t.title}
+                                </div>
+                            `).join('')}
+                        </div>
+                        <button onclick="app.openModal('task-modal', '${currentDateStr}')" class="absolute bottom-2 right-2 text-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <i class="fa-solid fa-plus-circle text-lg"></i>
+                        </button>
+                    </div>`;
+                }
+
+                container.innerHTML = `
+                <div class="fade-in h-full flex flex-col max-w-6xl mx-auto">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-bold dark:text-white">${monthNames[month]} ${year}</h2>
+                        <div class="flex gap-2">
+                            <button class="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg text-slate-500"><i class="fa-solid fa-chevron-left"></i></button>
+                            <button class="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg text-slate-500"><i class="fa-solid fa-chevron-right"></i></button>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-7 text-center py-2 text-sm font-semibold text-slate-500 border-b border-slate-200 dark:border-slate-700">
+                        <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+                    </div>
+                    <div class="calendar-grid border-l border-t border-slate-200 dark:border-slate-700 rounded-bl-xl rounded-br-xl overflow-hidden flex-1">
+                        ${daysHTML}
+                    </div>
+                </div>`;
+            },
+
+            renderPomodoroView(container) {
+                const { mode, isRunning } = this.state.timer;
+
+                const modeLabels = {
+                    focus: 'Focus Session',
+                    shortBreak: 'Short Break',
+                    longBreak: 'Long Break'
+                };
+
+                // IMPORTANT: Static HTML structure that won't be re-rendered on tick
+                container.innerHTML = `
+                <div class="fade-in flex flex-col items-center justify-center h-full">
+                    <div class="bg-white dark:bg-slate-800 p-8 md:p-12 rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-700 w-full max-w-xl text-center relative overflow-hidden">
+                        
+                        <!-- Tabs -->
+                        <div class="flex justify-center gap-2 mb-10 relative z-10">
+                            <button onclick="app.setTimerMode('focus')" class="timer-tab px-4 py-2 rounded-full text-sm font-medium transition-all ${mode === 'focus' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 ring-2 ring-indigo-500 ring-offset-2 dark:ring-offset-slate-800' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700'}">Focus</button>
+                            <button onclick="app.setTimerMode('shortBreak')" class="timer-tab px-4 py-2 rounded-full text-sm font-medium transition-all ${mode === 'shortBreak' ? 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300 ring-2 ring-teal-500 ring-offset-2 dark:ring-offset-slate-800' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700'}">Short Break</button>
+                            <button onclick="app.setTimerMode('longBreak')" class="timer-tab px-4 py-2 rounded-full text-sm font-medium transition-all ${mode === 'longBreak' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-slate-800' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700'}">Long Break</button>
+                        </div>
+
+                        <!-- Timer Display -->
+                        <div class="relative w-64 h-64 mx-auto mb-10 flex items-center justify-center">
+                            <!-- Background Circle -->
+                            <svg class="w-full h-full transform -rotate-90">
+                                <circle cx="128" cy="128" r="120" stroke="currentColor" stroke-width="8" fill="transparent" class="text-slate-100 dark:text-slate-700" />
+                                <circle id="timer-progress-circle" cx="128" cy="128" r="120" stroke="currentColor" stroke-width="8" fill="transparent" stroke-dasharray="753" stroke-dashoffset="0" stroke-linecap="round" class="text-indigo-500 timer-ring" />
+                            </svg>
+                            <div class="absolute text-center">
+                                <div id="timer-time-display" class="text-7xl font-mono font-bold text-slate-800 dark:text-white tracking-tighter">00:00</div>
+                                <div id="timer-mode-label" class="text-slate-500 mt-2 font-medium uppercase tracking-widest text-xs">${modeLabels[mode]}</div>
+                            </div>
+                        </div>
+
+                        <!-- Controls -->
+                        <div class="flex items-center justify-center gap-6">
+                             <button onclick="app.resetTimer()" class="w-14 h-14 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors flex items-center justify-center" title="Reset Timer">
+                                <i class="fa-solid fa-rotate-left"></i>
+                            </button>
+                            
+                            <button onclick="app.toggleTimer()" class="w-20 h-20 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-xl shadow-indigo-500/40 transition-transform hover:scale-105 active:scale-95 flex items-center justify-center text-3xl">
+                                <i id="timer-control-icon" class="fa-solid ${isRunning ? 'fa-pause' : 'fa-play pl-1'}"></i>
+                            </button>
+
+                            <button onclick="app.openTimerSettings()" class="w-14 h-14 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors flex items-center justify-center" title="Settings">
+                                <i class="fa-solid fa-cog"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>`;
+                
+                // Initialize the values immediately after render
+                this.updateTimerDisplay();
+            },
+
+            // --- Optimized Timer Updates (No Re-render) ---
+            updateTimerDisplay() {
+                const { time, totalTime, isRunning, mode } = this.state.timer;
+                const minutes = Math.floor(time / 60).toString().padStart(2, '0');
+                const seconds = (time % 60).toString().padStart(2, '0');
+                
+                const modeLabels = {
+                    focus: 'Focus',
+                    shortBreak: 'Short Break',
+                    longBreak: 'Long Break'
+                };
+
+                // 1. Update Global Mini Widget
+                const miniTime = document.getElementById('mini-time');
+                if (miniTime) miniTime.textContent = `${minutes}:${seconds}`;
+                
+                const miniIcon = document.getElementById('mini-icon');
+                if (miniIcon) miniIcon.className = `fa-solid ${isRunning ? 'fa-pause' : 'fa-play'} text-xs text-slate-500 z-10`;
+                
+                const miniProgress = document.getElementById('mini-progress');
+                if (miniProgress) {
+                    const offset = 113 - (113 * ((totalTime - time) / totalTime));
+                    miniProgress.style.strokeDashoffset = offset;
+                }
+                
+                const miniModeText = document.getElementById('mini-mode-text');
+                if (miniModeText) miniModeText.textContent = modeLabels[mode];
+
+                // Update Mini Timer Border Color
+                const miniTimer = document.getElementById('mini-timer');
+                if (miniTimer) {
+                     miniTimer.className = miniTimer.className.replace(/border-\w+-500/, ''); // Remove old border
+                     if(mode === 'focus') miniTimer.classList.add('border-indigo-500');
+                     else if(mode === 'shortBreak') miniTimer.classList.add('border-teal-500');
+                     else if(mode === 'longBreak') miniTimer.classList.add('border-blue-500');
+                }
+
+                // 2. Update Main View Elements (Only if they exist)
+                const mainTime = document.getElementById('timer-time-display');
+                if (mainTime) mainTime.textContent = `${minutes}:${seconds}`;
+
+                const mainCircle = document.getElementById('timer-progress-circle');
+                if (mainCircle) {
+                    const circumference = 753; // 2 * pi * 120
+                    const offset = circumference - (circumference * ((totalTime - time) / totalTime));
+                    mainCircle.style.strokeDashoffset = offset;
+                }
+
+                const mainIcon = document.getElementById('timer-control-icon');
+                if (mainIcon) mainIcon.className = `fa-solid ${isRunning ? 'fa-pause' : 'fa-play pl-1'}`;
+            },
+
+            // --- Helper Functions ---
+            generateTaskHTML(task, simple = false) {
+                const priorityColors = {
+                    high: 'text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-400 border-red-200 dark:border-red-900',
+                    medium: 'text-orange-600 bg-orange-50 dark:bg-orange-900/20 dark:text-orange-400 border-orange-200 dark:border-orange-900',
+                    low: 'text-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400 border-blue-200 dark:border-blue-900'
+                };
+                
+                const categoryIcons = {
+                    work: 'fa-briefcase',
+                    personal: 'fa-user',
+                    study: 'fa-graduation-cap',
+                    health: 'fa-heart'
+                };
+
+                return `
+                <li class="p-4 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors flex items-center gap-4 group">
+                    <label class="custom-checkbox flex-shrink-0 cursor-pointer">
+                        <input type="checkbox" class="hidden" ${task.completed ? 'checked' : ''} onchange="app.toggleComplete('${task.id}')">
+                        <div class="w-6 h-6 border-2 border-slate-300 dark:border-slate-600 rounded-full flex items-center justify-center transition-colors">
+                            <svg class="w-3 h-3 text-white hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                        </div>
+                    </label>
+                    
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 mb-1">
+                            <h4 class="text-slate-800 dark:text-slate-200 font-medium truncate ${task.completed ? 'line-through text-slate-400' : ''}">${task.title}</h4>
+                            ${!simple ? `<span class="text-xs px-2 py-0.5 rounded-md border ${priorityColors[task.priority]} font-bold uppercase tracking-wider">${task.priority}</span>` : ''}
+                        </div>
+                        <div class="flex items-center gap-4 text-xs text-slate-500">
+                             ${task.dueDate ? `<span class="flex items-center gap-1"><i class="fa-regular fa-calendar"></i> ${task.dueDate}</span>` : ''}
+                             <span class="flex items-center gap-1 capitalize"><i class="fa-solid ${categoryIcons[task.category] || 'fa-tag'}"></i> ${task.category}</span>
+                        </div>
+                    </div>
+
+                    ${!simple ? `
+                    <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onclick="app.editTask('${task.id}')" class="p-2 text-slate-400 hover:text-indigo-500"><i class="fa-solid fa-pen"></i></button>
+                        <button onclick="app.deleteTask('${task.id}')" class="p-2 text-slate-400 hover:text-red-500"><i class="fa-solid fa-trash"></i></button>
+                    </div>` : 
+                    `<div class="text-xs font-bold ${priorityColors[task.priority]} px-2 py-1 rounded">${task.priority.toUpperCase()}</div>`
+                    }
+                </li>`;
+            },
+
+            // --- Timer Logic ---
+            setTimerMode(mode) {
+                this.state.timer.isRunning = false;
+                clearInterval(this.state.timer.intervalId);
+                
+                let duration;
+                if (mode === 'focus') duration = this.state.timerSettings.focus * 60;
+                else if (mode === 'shortBreak') duration = this.state.timerSettings.shortBreak * 60;
+                else if (mode === 'longBreak') duration = this.state.timerSettings.longBreak * 60;
+
+                this.state.timer = {
+                    ...this.state.timer,
+                    mode,
+                    time: duration,
+                    totalTime: duration,
+                    intervalId: null
+                };
+                
+                // If we are currently on the pomodoro view, re-render to update tabs
+                if(this.state.view === 'pomodoro') {
+                    this.renderPomodoroView(document.getElementById('app-container'));
+                } else {
+                    this.updateTimerDisplay();
+                }
+            },
+
+            toggleTimer() {
+                if (this.state.timer.isRunning) {
+                    clearInterval(this.state.timer.intervalId);
+                    this.state.timer.isRunning = false;
+                    this.updateTimerDisplay();
+                } else {
+                    this.state.timer.isRunning = true;
+                    this.updateTimerDisplay();
+                    this.state.timer.intervalId = setInterval(() => {
+                        if (this.state.timer.time > 0) {
+                            this.state.timer.time--;
+                            this.updateTimerDisplay(); // Optimized update
+                        } else {
+                            this.playSound();
+                            this.setTimerMode(this.state.timer.mode === 'focus' ? 'shortBreak' : 'focus');
+                        }
+                    }, 1000);
+                }
+            },
+
+            resetTimer() {
+                this.setTimerMode(this.state.timer.mode);
+            },
+
+            playSound() {
+                console.log("Timer Finished!");
+            },
+
+            // --- Settings Modal Logic ---
+            openTimerSettings() {
+                const modal = document.getElementById('timer-settings-modal');
+                const content = document.getElementById('timer-settings-content');
+                
+                document.getElementById('setting-focus').value = this.state.timerSettings.focus;
+                document.getElementById('setting-short').value = this.state.timerSettings.shortBreak;
+                document.getElementById('setting-long').value = this.state.timerSettings.longBreak;
+
+                modal.classList.remove('hidden');
+                setTimeout(() => {
+                    modal.classList.remove('opacity-0');
+                    content.classList.remove('scale-95');
+                }, 10);
+            },
+
+            saveTimerSettings(e) {
+                e.preventDefault();
+                const focus = parseInt(document.getElementById('setting-focus').value) || 25;
+                const short = parseInt(document.getElementById('setting-short').value) || 5;
+                const long = parseInt(document.getElementById('setting-long').value) || 15;
+
+                this.state.timerSettings = { focus, shortBreak: short, longBreak: long };
+                localStorage.setItem('focusflow_settings', JSON.stringify(this.state.timerSettings));
+                
+                // Reset current timer to reflect changes if not running
+                if(!this.state.timer.isRunning) {
+                    this.setTimerMode(this.state.timer.mode);
+                }
+
+                this.closeModal('timer-settings-modal');
+            },
+
+            // --- Modal & Form ---
+            openModal(modalId, dateStr = '') {
+                const modal = document.getElementById(modalId);
+                const content = modal.querySelector('div'); // First child div
+                
+                if (modalId === 'task-modal') {
+                    const form = document.getElementById('task-form');
+                    form.reset();
+                    document.getElementById('modal-title').textContent = 'New Task';
+                    document.getElementById('task-id').value = '';
+                    if(dateStr) document.getElementById('task-date').value = dateStr;
+                    this.setupCategorySelector();
+                }
+
+                modal.classList.remove('hidden');
+                setTimeout(() => {
+                    modal.classList.remove('opacity-0');
+                    content.classList.remove('scale-95');
+                }, 10);
+            },
+
+            closeModal(modalId) {
+                const modal = document.getElementById(modalId);
+                const content = modal.querySelector('div');
+                
+                modal.classList.add('opacity-0');
+                content.classList.add('scale-95');
+                
+                setTimeout(() => {
+                    modal.classList.add('hidden');
+                }, 200);
+            },
+
+            handleTaskSubmit(e) {
+                e.preventDefault();
+                const title = document.getElementById('task-title').value;
+                const priority = document.getElementById('task-priority').value;
+                const date = document.getElementById('task-date').value;
+                const category = document.getElementById('task-category').value;
+                const id = document.getElementById('task-id').value;
+
+                if (id) {
+                    this.updateTask(id, { title, priority, dueDate: date, category });
+                } else {
+                    this.addTask({ title, priority, dueDate: date, category });
+                }
+                this.closeModal('task-modal');
+            },
+
+            editTask(id) {
+                const task = this.state.tasks.find(t => t.id === id);
+                if (!task) return;
+
+                this.openModal('task-modal');
+                document.getElementById('modal-title').textContent = 'Edit Task';
+                document.getElementById('task-id').value = task.id;
+                document.getElementById('task-title').value = task.title;
+                document.getElementById('task-priority').value = task.priority;
+                document.getElementById('task-date').value = task.dueDate;
+                
+                // Select category visually
+                this.selectCategory(task.category);
+            },
+
+            setupCategorySelector() {
+                const categories = [
+                    { id: 'work', icon: 'fa-briefcase', label: 'Work', color: 'bg-blue-100 text-blue-600' },
+                    { id: 'personal', icon: 'fa-user', label: 'Personal', color: 'bg-green-100 text-green-600' },
+                    { id: 'study', icon: 'fa-graduation-cap', label: 'Study', color: 'bg-purple-100 text-purple-600' },
+                    { id: 'health', icon: 'fa-heart', label: 'Health', color: 'bg-red-100 text-red-600' }
+                ];
+
+                const container = document.getElementById('category-selector');
+                container.innerHTML = categories.map(cat => `
+                    <button type="button" onclick="app.selectCategory('${cat.id}')" 
+                        class="cat-btn flex-1 py-2 rounded-lg border border-slate-200 dark:border-slate-700 flex flex-col items-center gap-1 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all ${cat.id === 'work' ? 'ring-2 ring-indigo-500 bg-indigo-50 dark:bg-slate-700' : ''}" 
+                        data-id="${cat.id}">
+                        <i class="fa-solid ${cat.icon}"></i>
+                        <span class="text-xs">${cat.label}</span>
+                    </button>
+                `).join('');
+                document.getElementById('task-category').value = 'work';
+            },
+
+            selectCategory(id) {
+                document.getElementById('task-category').value = id;
+                document.querySelectorAll('.cat-btn').forEach(btn => {
+                    if (btn.dataset.id === id) {
+                        btn.classList.add('ring-2', 'ring-indigo-500', 'bg-indigo-50', 'dark:bg-slate-700');
+                    } else {
+                        btn.classList.remove('ring-2', 'ring-indigo-500', 'bg-indigo-50', 'dark:bg-slate-700');
+                    }
+                });
+            },
+
+            triggerConfetti() {
+                // Minimal confetti visual effect using existing DOM
+                const btn = document.getElementById('nav-tasks');
+                btn.classList.add('animate-bounce');
+                setTimeout(() => btn.classList.remove('animate-bounce'), 1000);
+            },
+
+            refreshCurrentView() {
+                if(this.state.view === 'dashboard') this.renderDashboard(document.getElementById('app-container'));
+                else if(this.state.view === 'tasks') this.renderTaskView(document.getElementById('app-container'));
+                else if(this.state.view === 'calendar') this.renderCalendarView(document.getElementById('app-container'));
+                this.updateBadge();
+            }
+        };
+
+        // Boot the app
+        window.addEventListener('DOMContentLoaded', () => {
+            app.init();
+        });
+
+    </script>
+</body>
+</html>
